@@ -1,0 +1,141 @@
+ALTER VIEW [dbo].[v_Auftragsbestand_LagerbestandVerteilt] 
+/* 
+31.08.21 ra
+	Quelle: Projekt 266
+03.09.21 ra 
+	v_AuftragsbestandOffen.BTermin + ' a' -> ohne ' a'
+06.09.21 ra 78417
+	Spalte 'Geplant': PlanMenge aus Feinplan
+29.09.21 ra 78417
+	Branche
+01.10.21 ra
+	raus: uPlanMenge as Planmenge
+	FB-Anzeige: eingebaut: AND FStueck - RueckSt - AusschSt > 0 
+		or FbName is Null
+11.10.21 ra
+	Alternative Fremdbearbeiter-Bestände richtig berechnen (erst mal nur in ZSB-Unteraufträgen) -> fBestand
+13.10.21 ra
+	BeVorZugAG = 1
+20.10.21 ra
+	Zugesagten Fremdbearbeiter-Termin auführen -> FbTermin
+25.10.21 ra
+	Monat
+26.10.21 ra
+	Monat formatiert
+*/
+AS
+SELECT v_AuftragsbestandOffen.MengenID AS Id, Auftraege.AuftrNr AS Auftrag, NameKurz AS Kunde, BrancheBezKurz as Branche, Auftraege.TeileNr, ModellBez AS Bezeichnung, ModellNr, Werkstoffe.WerkstoffBez as Werkstoff, [I-Formanlagen].FormAnlage AS Formerei, [i-AuftragsStatus].Statustext AS Status, Offen, 
+CASE WHEN LAB = 1 THEN v_AuftragsbestandOffen.BTermin ELSE ISNULL(v_AuftragsbestandOffen.BTermin + '  ', v_AuftragsbestandOffen.WTermin + ' w') END AS KTermin, 
+SUBSTRING(CAST(YEAR(v_AuftragsbestandOffen.BDiTermin) as varchar), 1, 4) + '-' + SUBSTRING(CAST(MONTH(v_AuftragsbestandOffen.BDiTermin)+100 as varchar), 2, 2) as Monat,
+round(Offen * GewFert, 0) AS OffenGew, round(Offen * ReStueckPreis, 0) AS OffenVkWert, 
+
+case when Auftraege.TeileNr = uTeileNr then -- wenn Lagerteil-ZSB (Produktionsauftrag und Kundenauftrag vom gleichen Teil)
+	dbo.fn_LagerbestandZuMengeTermin(v_AuftragsbestandOffen.FzBm, max.FzBm, [Auf-LAB].BMenge,isnull(uBestandFE,0)+LzFz, isnull(uBestandFE,0)+LzFz-WAFZ)
+else
+	dbo.fn_LagerbestandZuMengeTermin(v_AuftragsbestandOffen.FzBm, max.FzBm, [Auf-LAB].BMenge, LzFz, LzFz-WAFZ)
+end	as Fertig,
+
+case when Auftraege.TeileNr = uTeileNr then
+	dbo.fn_LagerbestandZuMengeTermin(v_AuftragsbestandOffen.FzBm, max.FzBm, [Auf-LAB].BMenge,isnull(uBestandHF,0)+isnull(uBestandFE,0)+FoFZ-AusschGes, isnull(uBestandHF,0)+FoFZ-AusschGes-LzFz) 
+else
+	dbo.fn_LagerbestandZuMengeTermin(v_AuftragsbestandOffen.FzBm, max.FzBm, [Auf-LAB].BMenge,isnull(uBestandHF,0)+isnull(uBestandFE,0)+FoFZ-AusschGes, isnull(uBestandHF,0)+isnull(uBestandFE,0)+FoFZ-AusschGes-LzFz) 
+end as Unfertig,
+
+case when Auftraege.TeileNr = uTeileNr or FbName is Null then -- wenn Lagerteil-ZSB 
+	uFbName -- Fremdbearbeiter-Bestand aus Unterauftrag 
+else
+	FbName
+end	as FbName,
+
+case when Auftraege.TeileNr = uTeileNr or FbName is Null then -- wenn Lagerteil-ZSB 
+	dbo.fn_LagerbestandZuMengeTermin(v_AuftragsbestandOffen.FzBm, max.FzBm, [Auf-LAB].BMenge,isnull(uFBestand,0)+isnull(uBestandFE,0)+FoFZ-AusschGes, isnull(uFBestand,0)+FoFZ-AusschGes-LzFz) 
+else
+	dbo.fn_LagerbestandZuMengeTermin(v_AuftragsbestandOffen.FzBm, max.FzBm, [Auf-LAB].BMenge, MaxFStueck, MaxFStueck-MinRueckSt) 
+end	as FBestand,
+FbTermin,
+dbo.fn_LagerbestandZuMengeTermin(v_AuftragsbestandOffen.FzBm, max.FzBm, [Auf-LAB].BMenge,isnull(uPlanMenge,0)+isnull(uBestandHF,0)+isnull(uBestandFE,0)+FoFZ-AusschGes, isnull(uPlanMenge,0))
+as Geplant,
+
+[Auf-Lab].PosText
+FROM Auftraege 
+INNER JOIN Debitor ON Auftraege.KundenNr = Debitor.KundenNr
+inner join qErsteDebBranche ON Auftraege.KundenNr = qErsteDebBranche.KundenNr
+INNER JOIN qV_AufPreiseVk ON Auftraege.AuftrNr = qV_AufPreiseVk.AuftrNr
+INNER JOIN v_AuftragsbestandOffen ON Auftraege.AuftrNr = v_AuftragsbestandOffen.AuftrNr
+INNER JOIN [Auf-LAB] ON v_AuftragsbestandOffen.MengenID = [Auf-LAB].MengenID
+left join (
+	select al.MengenID, min(lTermin) as FbTermin from [Auf-LAB] al
+	inner join AufFLab afl on al.AuftrNr = afl.AuftrNr
+	where 
+	al.FzBm <= afl.LiefFz
+	group by al.MengenID
+) fTermin on [Auf-LAB].MengenID = fTermin.MengenID
+inner join (
+	select AuftrNr, max(FzBm) as FzBm from [Auf-LAB]
+	group by AuftrNr
+) max on Auftraege.AuftrNr = max.AuftrNr
+LEFT JOIN [i-AuftragsStatus] ON Auftraege.AuftragsStatus = [i-AuftragsStatus].StatusId
+LEFT JOIN Werkstoffe ON Auftraege.WerkstoffID = Werkstoffe.WerkstoffID
+LEFT JOIN [I-Formanlagen] ON Auftraege.FoAnlage = [I-Formanlagen].Nummer
+LEFT JOIN (
+	/*	
+	Fremdbearbeiter-Bestand in einem Datensatz zusammenfassen. 
+	Wenn Bestand nur in einem Fremdb. dann den Namen anzeigen,
+	wenn z.B. in zwei Fremdb., dann "2 FB" anzeigen.
+	** ACHTUNG: die Bestandsverteilung (dbo.fnOffenBestand(Offen, FzBm, MaxFStueck, MinRueckSt, FolgePos)) passt noch nicht bei alternativen AGs ***
+	*/	
+	SELECT AuftrNr, MAX(FStueck - AusschSt) AS MaxFStueck, MIN(RueckSt) AS MinRueckSt, SUM(FStueck - RueckSt - AusschSt) AS FBestand, 
+		COUNT(AuftrNr) AS AnzFB, CASE WHEN COUNT(AuftrNr) = 1 THEN MIN(NameKurz) ELSE STR(COUNT(AuftrNr)) + ' FB' END AS FbName FROM [Auf-Bearb] 
+	INNER JOIN Kreditor ON LieferantenNr = LieferantNr
+	--WHERE BearbArt = 'F' /* 06.03.20 für Bauer deaktiviert:  AND FStueck - RueckSt - AusschSt > 0 */
+	WHERE BearbArt = 'F' AND FStueck - RueckSt - AusschSt > 0 
+	GROUP BY AuftrNr
+) AS fb on Auftraege.AuftrNr = fb.AuftrNr
+left join (
+	select * from (
+		-- Bestand aus Lageraufträgen (bereits auf die passenden Kundenaufträge verteilt)
+		select a.TeileNr as uTeileNr, case when isnumeric(PositionsNr)=1 then cast(PositionsNr as real) else 0 end as oAuftrNr,
+		sum(dbo.fn_LagerbestandZuMengeTermin(al.FzBm, max.FzBm, BMenge, FoFZ-AusschGes+PlanMenge, PlanMenge)) as uPlanMenge,
+		sum(dbo.fn_LagerbestandZuMengeTermin(al.FzBm, max.FzBm, BMenge, FoFZ-AusschGes, FoFZ-AusschGes-LZFZ)) as uBestandHF,
+		sum(dbo.fn_LagerbestandZuMengeTermin(al.FzBm, max.FzBm, BMenge, LZFZ, LZFZ-WAFZ)) as uBestandFE,
+		FbName as uFbName, 
+		sum(dbo.fn_LagerbestandZuMengeTermin(al.FzBm, max.FzBm, BMenge, fBestand.MaxFStueck, fBestand.FBestand)) as uFBestand
+		from Auftraege a 
+		inner join [Auf-LAB] al on a.AuftrNr = al.AuftrNr
+		inner join (
+			select AuftrNr, max(FzBm) as FzBm from [Auf-LAB]
+			group by AuftrNr
+		) max on a.AuftrNr = max.AuftrNr
+		inner join (select AuftrNr, TeileNr from Auftraege) ao on al.AuftrNr = ao.AuftrNr
+		LEFT JOIN (
+			-- Fremdbearbeiter-Namen aus ZSB-Unteraufträgen
+			SELECT AuftrNr, COUNT(AuftrNr) AS AnzFB, CASE WHEN COUNT(AuftrNr) = 1 THEN MIN(NameKurz) ELSE STR(COUNT(AuftrNr)) + ' FB' END AS FbName FROM [Auf-Bearb] 
+			INNER JOIN Kreditor ON LieferantenNr = LieferantNr
+			WHERE BearbArt = 'F' and FStueck - RueckSt - AusschSt <> 0 and BeVorZugAG = 1
+			GROUP BY AuftrNr
+		) AS fb on a.AuftrNr = fb.AuftrNr 
+		LEFT JOIN (
+			-- Fremdbearbeiter-Bestand aus ZSB-Unteraufträgen
+			SELECT AuftrNr, MAX(FStueck - AusschSt) AS MaxFStueck, MIN(RueckSt) AS MinRueckSt, SUM(FStueck - RueckSt - AusschSt) AS FBestand from (
+				select AuftrNr, ROUND(Agnr / 10, 1) * 10 AS AgGrp, sum(FStueck) as FStueck, sum(RueckSt) as RueckSt, sum(AusschSt) as AusschSt
+				from [Auf-Bearb]
+				WHERE BearbArt = 'F' and FStueck - RueckSt - AusschSt <> 0
+				group by AuftrNr, ROUND(Agnr / 10, 1) * 10
+			) aufBearb 
+			GROUP BY AuftrNr
+		) AS fBestand on a.AuftrNr = fBestand.AuftrNr 
+		left join (
+			select AuftrNr, sum(PlanMenge) as PlanMenge from Feinplan
+			group by AuftrNr		
+		) fp on a.AuftrNr = fp.AuftrNr
+		where AuftrArt = '1'
+		group by a.TeileNr, PositionsNr, FbName
+	) lagAuf
+	inner join (
+		select AuftrNr from [Auf-Bearb]
+		where BearbArt = 'Z' 
+		group by AuftrNr
+		having count(BearbArt) = 1
+	) oberAuftrMitEinemZsb on lagAuf.oAuftrNr = oberAuftrMitEinemZsb.AuftrNr
+) lagAuf on Auftraege.AuftrNr = lagAuf.oAuftrNr
+GO
