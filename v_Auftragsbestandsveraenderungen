@@ -1,0 +1,12 @@
+ALTER view [dbo].[v_Auftragsbestandsveraenderungen]
+/*
+08.12.21 ra
+	Monat eingebaut
+*/
+as
+select 0 as Id, cast(Datum as date) Datum, a.AuftrNr, d.NameKurz as Kunde, a.ModellNr, a.ModellBez, BTermin as Termin, Menge, round(Menge * GewRoh, 0) as Gewicht,
+	SUBSTRING(CAST(YEAR(dbo.fnDatumFurKw(BTermin, null)) as varchar), 1, 4) + '-' + SUBSTRING(CAST(MONTH(dbo.fnDatumFurKw(BTermin, null))+100 as varchar), 2, 2) as Monat 
+from Auftragsbestandsveraenderungen aAend
+inner join Auftraege a on aAend.AuftrNr = a.AuftrNr
+inner join Debitor d on a.KundenNr = d.KundenNr
+GO
