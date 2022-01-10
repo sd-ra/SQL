@@ -1,0 +1,10 @@
+CREATE view [dbo].[v_Nachkalkulation]
+as
+select d.NameKurz as Kunde, cast(t.TeileNr as varchar) + ' ' + t.ModellBez + ' ' + t.ModellNr as Teil, n.*, 
+	round([SollEinzelzeit_Min/St] * VarKostensatz, 2) as [SollTeilkosten_€/St], round([IstEinzelzeit_Min/St] * VarKostensatz, 2) as [IstTeilkosten_€/St],
+	round([SollEinzelzeit_Min/St] * (VarKostensatz + FixKostensatz), 2) as [Soll Volllkosten_€/St], round([IstEinzelzeit_Min/St] * (VarKostensatz + FixKostensatz), 2) as [IstVollkosten_€/St]  
+from (
+	select * from v_KernzeitenSollIst
+) n
+inner join Teile t on n.TeileNr = t.TeileNr
+inner join Debitor d on t.KundenNr = d.KundenNr
