@@ -1,10 +1,9 @@
-create view [dbo].[v_KernzeitenSollIst]
+alter view [dbo].[v_KernzeitenSollIst]
 as
-select Datum, AuftrNr as Auftrag, TeileNr, 'Kern' as Bereich, KernNr as Pos, 'Fertigung' as Art, i.KernAnlBez as Ressource, Stueck as Menge, 
-	KernHerMin / Stueck as [SollEinzelzeit_Min/St], 
-	round(case when IstKernZeit <= 0 then KernHerMin else IstKernZeit end / Stueck, 2) as [IstEinzelzeit_Min/St], round(case when IstKernZeit <= 0 then KernHerMin else IstKernZeit end, 0) as SollGesamzeit_Min, IstKernZeit as IstGesamzeit_Min, 
-	i.FertigKostVar as VarKostensatz,
-	i.FertigKostFix as FixKostensatz
+select Datum, TeileNr, AuftrNr as Auftrag, 'Kern' as Bereich, KernNr as Pos, 'Fertigung' as Art, i.KernAnlBez as Ressource, Stueck as Menge, 
+	KernHerMin SollAufwand_Min, 
+	IstKernZeit as IstAufwand_Min, 
+	i.FertigKostVar + i.FertigKostFix as [Kostensatz_wae/Min]
 from  bewKernRueck k
 inner join [I-KernAnlagen] i on k.KernHiID = i.Nummer
-where Stueck <> 0 
+where Stueck <> 0 and IstKernZeit > 0
