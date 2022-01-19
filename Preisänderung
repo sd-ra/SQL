@@ -1,0 +1,19 @@
+--select * from [I-Zusatzleistungen]
+--select * from Debitor where namekurz like 'hawle%'
+
+declare @kdNr int, @zslNr int, @preisAend real
+set @kdNr = 8002
+set @zslNr = 43 
+set @preisAend = 35
+
+
+select * 
+--update tp set StaffelPreis = StaffelPreis + @preisAend
+from [Tei-Preise] tp
+inner join Teile t on tp.TeileID = t.TeileID
+where tp.ZusLeisNr = @zslNr and t.KundenNr = @kdNr
+
+update ap set StaffelPreis = StaffelPreis + @preisAend
+from [Auf-Preise] ap
+inner join Auftraege a on ap.AuftrNr = a.AuftrNr
+where ap.ZusLeisNr = @zslNr and a.KundenNr = @kdNr
