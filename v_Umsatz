@@ -7,7 +7,7 @@ ALTER VIEW [dbo].[v_Umsatz]
 14.09.21 ra
     KundenNr, Hauptkunde, Land dazu
 25.01.21 ra
-	MTZWert
+    MTZWert
 */
 AS
 SELECT        dbo.v_RepMMJJDat.Datum, dbo.v_RepMMJJDat.NameKurz, dbo.v_RepMMJJDat.BrancheBezKurz, dbo.v_RepMMJJDat.BranchenBez, dbo.v_RepMMJJDat.ModellNr, dbo.v_RepMMJJDat.ModellBez, 
