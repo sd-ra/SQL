@@ -1,0 +1,37 @@
+CREATE procedure [dbo].[p_Auftragseingang_Termine]
+/*
+20.01.21 ra
+	Für Bartz erstmal erstellt
+*/
+as
+insert into Auftragseingang_Termine
+select getdate(), TeileNr, AuftrNr, sum(Menge), BTermin from (
+	select a.AuftrNr, a.TeileNr, BMenge Menge, BTermin from [Auf-LAB] al
+	inner join Auftraege a on al.AuftrNr = a.AuftrNr
+	where AuftrArt <> '1' and Storniert <> 1
+
+	union all
+    -- Erledigte Abrufe, die bereits gelöscht sind als Summe mit reinbringen
+	select am.AuftrNr, a.TeileNr, min(FzBm - BMenge) Menge, null BTermin from [Auf-LAB] am
+	inner join (
+		select a.AuftrNr from Auftraege a
+		left join (
+			select AuftrNr from [Auf-LAB]
+			where FzBm = BMenge
+		) al on a.AuftrNr = al.AuftrNr 
+		where al.AuftrNr is null and AuftrArt <> '1' and Storniert <> 1
+	) al on am.AuftrNr = al.AuftrNr
+	inner join Auftraege a on al.AuftrNr = a.AuftrNr
+	group by am.AuftrNr, a.TeileNr
+
+	union all
+	select a.AuftrNr, a.TeileNr, BMenge Menge, BTermin from AblAufLAB al
+	inner join AblAuftraege a on al.AuftrNr = a.AuftrNr
+	where AuftrArt <> '1' and Storniert <> 1
+
+	union all
+	select AuftrNr, TeileNr, -Menge as Menge, BTermin from Auftragseingang_Termine
+) ae
+group by TeileNr, AuftrNr, BTermin
+having sum(Menge) <> 0
+GO
