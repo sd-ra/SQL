@@ -1,0 +1,35 @@
+ALTER VIEW [dbo].[v_Umsatz]
+/*
+28.09.20 jb
+    Stückzahl hinzugefügt
+03.08.21 ra 76656
+    TeileNr dazu
+14.09.21 ra
+    KundenNr, Hauptkunde, Land dazu
+25.01.21 ra
+	MTZWert
+*/
+AS
+SELECT        dbo.v_RepMMJJDat.Datum, dbo.v_RepMMJJDat.NameKurz, dbo.v_RepMMJJDat.BrancheBezKurz, dbo.v_RepMMJJDat.BranchenBez, dbo.v_RepMMJJDat.ModellNr, dbo.v_RepMMJJDat.ModellBez, 
+                         dbo.v_RepMMJJDat.ZusatzlNr, dbo.[I-Vertreter].VertreterName1 AS Betreuer, dbo.[Mod-Stamm].EigentumNr, dbo.Debitor.NameKurz AS Eigentuemer, 
+                         CASE WHEN v_repmmjjdat.ZusatzlNr = 0 THEN dbo.v_RepMMJJDat.Stueck * CASE WHEN v_RepMMJJDat.ZusatzlNr = 0 AND ((AuftrNr > 0 AND SoAbwMerker = 0) OR
+                         (SoAbwMerker = - 1 AND (Auftrart = N'1' OR
+                         Auftrart = N'4' OR
+                         Auftrart = N'5'))) THEN 1 ELSE 0 END WHEN v_repmmjjdat.ZusatzlNr <> 0 THEN 0 END AS Stueck, CASE WHEN v_repmmjjdat.ZusatzlNr = 0 THEN dbo.v_RepMMJJDat.Gewicht * CASE WHEN v_RepMMJJDat.ZusatzlNr = 0 AND 
+                         ((AuftrNr > 0 AND SoAbwMerker = 0) OR
+                         (SoAbwMerker = - 1 AND (Auftrart = N'1' OR
+                         Auftrart = N'4' OR
+                         Auftrart = N'5'))) THEN 1 ELSE 0 END / 1000 WHEN v_repmmjjdat.ZusatzlNr <> 0 THEN 0 END AS Gewicht, dbo.v_RepMMJJDat.Gewicht AS gew, dbo.v_RepMMJJDat.Wert, dbo.v_RepMMJJDat.BetreuerNr, 
+                         dbo.[I-Zusatzleistungen].Zusatzleistung, dbo.[I-ZSLGruppen].ZSLGruppe, dbo.v_RepMMJJDat.AbschlussID, CASE WHEN Datum IS NOT NULL THEN 'Umsatz' END AS Typ,
+                         Teile.TeileNr, v_RepMMJJDat.KundenNr, v_RepMMJJDat.Hauptkunde, v_RepMMJJDat.Land, MTZWert
+FROM            dbo.Teile RIGHT OUTER JOIN
+                         dbo.[I-Zusatzleistungen] RIGHT OUTER JOIN
+                         dbo.v_RepMMJJDat ON dbo.[I-Zusatzleistungen].ZusatzlNr = dbo.v_RepMMJJDat.ZusatzlNr LEFT OUTER JOIN
+                         dbo.[I-ZSLGruppen] ON dbo.[I-Zusatzleistungen].ZSLGruppe = dbo.[I-ZSLGruppen].ID LEFT OUTER JOIN
+                         dbo.[I-Vertreter] ON dbo.v_RepMMJJDat.BetreuerNr = dbo.[I-Vertreter].VertreterNr ON dbo.Teile.TeileID = dbo.v_RepMMJJDat.TeileID LEFT OUTER JOIN
+                         dbo.[Mod-Stamm] ON dbo.Teile.ModTeileID = dbo.[Mod-Stamm].ModTeileID LEFT OUTER JOIN
+                         dbo.Debitor ON dbo.[Mod-Stamm].EigentumNr = dbo.Debitor.KundenNr
+WHERE        (dbo.v_RepMMJJDat.Datum >= DATEADD(yy, DATEDIFF(yy, 0, GETDATE()) - 10, 0)) AND (dbo.v_RepMMJJDat.SoAbwMerker <> - 4)
+GO
+
+
