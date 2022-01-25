@@ -7,7 +7,7 @@ ALTER VIEW [dbo].[v_Umsatz]
 14.09.21 ra
     KundenNr, Hauptkunde, Land dazu
 25.01.21 ra
-    MTZWert
+	MTZWert, SoAbwMerker
 */
 AS
 SELECT        dbo.v_RepMMJJDat.Datum, dbo.v_RepMMJJDat.NameKurz, dbo.v_RepMMJJDat.BrancheBezKurz, dbo.v_RepMMJJDat.BranchenBez, dbo.v_RepMMJJDat.ModellNr, dbo.v_RepMMJJDat.ModellBez, 
@@ -21,7 +21,7 @@ SELECT        dbo.v_RepMMJJDat.Datum, dbo.v_RepMMJJDat.NameKurz, dbo.v_RepMMJJDa
                          Auftrart = N'4' OR
                          Auftrart = N'5'))) THEN 1 ELSE 0 END / 1000 WHEN v_repmmjjdat.ZusatzlNr <> 0 THEN 0 END AS Gewicht, dbo.v_RepMMJJDat.Gewicht AS gew, dbo.v_RepMMJJDat.Wert, dbo.v_RepMMJJDat.BetreuerNr, 
                          dbo.[I-Zusatzleistungen].Zusatzleistung, dbo.[I-ZSLGruppen].ZSLGruppe, dbo.v_RepMMJJDat.AbschlussID, CASE WHEN Datum IS NOT NULL THEN 'Umsatz' END AS Typ,
-                         Teile.TeileNr, v_RepMMJJDat.KundenNr, v_RepMMJJDat.Hauptkunde, v_RepMMJJDat.Land, MTZWert
+                         Teile.TeileNr, v_RepMMJJDat.KundenNr, v_RepMMJJDat.Hauptkunde, v_RepMMJJDat.Land, MTZWert, SoAbwMerker
 FROM            dbo.Teile RIGHT OUTER JOIN
                          dbo.[I-Zusatzleistungen] RIGHT OUTER JOIN
                          dbo.v_RepMMJJDat ON dbo.[I-Zusatzleistungen].ZusatzlNr = dbo.v_RepMMJJDat.ZusatzlNr LEFT OUTER JOIN
@@ -30,6 +30,3 @@ FROM            dbo.Teile RIGHT OUTER JOIN
                          dbo.[Mod-Stamm] ON dbo.Teile.ModTeileID = dbo.[Mod-Stamm].ModTeileID LEFT OUTER JOIN
                          dbo.Debitor ON dbo.[Mod-Stamm].EigentumNr = dbo.Debitor.KundenNr
 WHERE        (dbo.v_RepMMJJDat.Datum >= DATEADD(yy, DATEDIFF(yy, 0, GETDATE()) - 10, 0)) AND (dbo.v_RepMMJJDat.SoAbwMerker <> - 4)
-GO
-
-
