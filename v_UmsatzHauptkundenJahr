@@ -1,0 +1,13 @@
+create view [dbo].[v_UmsatzHauptkundenJahr]
+as
+/*
+25.01.21 ra
+	Quelle: v_UmsatzJahrMonatKunden
+*/
+select hauptKd.NameKurz as Hauptkunde, year(Datum) as Jahr, 
+round(sum(Gewicht),0) as Gewicht_to, round(sum(Wert),0) as Umsatz, round(sum(MTZWert),0) as MTZ,
+sum(case when SoAbwMerker = -2 then Wert else 0 end) as Modelle 
+from Debitor hauptKd
+left join v_Umsatz vu on vu.Hauptkunde = hauptKd.KundenNr
+where year(Datum) >= 2020
+group by year(Datum), hauptKd.NameKurz
