@@ -1,0 +1,17 @@
+create view v_UmsatzHauptkundenJahr2020_2021
+as
+select d.Hauptkunde, 2020 as Jahr, Gewicht_to, Umsatz, MTZ, Modelle
+from (
+	select Hauptkunde from v_UmsatzHauptkundenJahr group by Hauptkunde
+) d
+left join (
+	select * from v_UmsatzHauptkundenJahr where Jahr = 2020
+) vu on d.Hauptkunde = vu.Hauptkunde
+union
+select d.Hauptkunde, 2021 as Jahr, Gewicht_to, Umsatz, MTZ, Modelle
+from (
+	select Hauptkunde from v_UmsatzHauptkundenJahr group by Hauptkunde
+) d
+left join (
+	select * from v_UmsatzHauptkundenJahr where Jahr = 2021
+) vu on d.Hauptkunde = vu.Hauptkunde
