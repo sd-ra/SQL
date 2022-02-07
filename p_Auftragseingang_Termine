@@ -1,11 +1,13 @@
-CREATE procedure [dbo].[p_Auftragseingang_Termine]
+ALTER procedure [dbo].[p_Auftragseingang_Termine]
 /*
 20.01.21 ra
 	Für Bartz erstmal erstellt
+27.01.22
+	Gelöschte erledigte Datensätze nicht nochmal mit plus und minus protokollieren
 */
 as
-insert into Auftragseingang_Termine
-select getdate(), TeileNr, AuftrNr, sum(Menge), BTermin from (
+
+select * into #temp from (
 	select a.AuftrNr, a.TeileNr, BMenge Menge, BTermin from [Auf-LAB] al
 	inner join Auftraege a on al.AuftrNr = a.AuftrNr
 	where AuftrArt <> '1' and Storniert <> 1
@@ -32,6 +34,16 @@ select getdate(), TeileNr, AuftrNr, sum(Menge), BTermin from (
 	union all
 	select AuftrNr, TeileNr, -Menge as Menge, BTermin from Auftragseingang_Termine
 ) ae
-group by TeileNr, AuftrNr, BTermin
+
+insert into Auftragseingang_Termine
+select getdate(), TeileNr, AuftrNr, sum(Menge), BTermin from (
+	select TeileNr, #temp.AuftrNr, case when #temp.BTermin is null then mt.BTermin else #temp.BTermin end as BTermin, Menge from #temp
+	inner join (
+		select AuftrNr, min(BTermin) as BTermin from #temp group by AuftrNr
+	) mt on #temp.AuftrNr = mt.AuftrNr
+) tm group by TeileNr, AuftrNr, BTermin
 having sum(Menge) <> 0
+
+drop table #temp
 GO
+
