@@ -1,0 +1,13 @@
+ALTER view [dbo].[v_Auftragseingang_Termine]
+/*
+18.01.21 ra
+	Quelle: v_Auftragsbestandsveraenderungen (Kunde 167)
+*/
+as
+select Datum, a.AuftrNr, d.NameKurz as Kunde, a.ModellNr, a.ModellBez, BTermin as Termin, Menge, round(Menge * GewRoh, 0) as Gewicht,
+	case when BTermin <> '22.22.22' then SUBSTRING(CAST(YEAR(dbo.fnDatumFurKw(BTermin, null)) as varchar), 1, 4) + '-' + SUBSTRING(CAST(MONTH(dbo.fnDatumFurKw(BTermin, null))+100 as varchar), 2, 2) else '2222-22' end as Monat 
+from Auftragseingang_Termine ae
+inner join Auftraege a on ae.AuftrNr = a.AuftrNr
+inner join Debitor d on a.KundenNr = d.KundenNr
+
+GO
