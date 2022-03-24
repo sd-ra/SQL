@@ -1,12 +1,12 @@
-aalter view dbo.v_Nachkalkulation
+alter view dbo.v_Nachkalkulation
 /*
 24.03.22 ra 78731 
 */
 as
-select d.NameKurz as Kunde, cast(t.TeileNr as varchar) + ' ' + t.ModellBez + ' ' + t.ModellNr as Teil, n.*, 
-	round(SollAufwandMin * Kostensatz, 2) as Sollkosten,
-	round(IstAufwandMin * Kostensatz, 2) as Istkosten,
-	round(IstAufwandMin * Kostensatz, 2) - round(SollAufwandMin * Kostensatz, 2) as Mehrkosten
+select d.NameKurz as Kunde, t.ModellBez + ' ' + t.ModellNr as Teil, n.*, 
+	round(SollMin * Kostensatz, 2) as Sollkosten,
+	round(IstMin * Kostensatz, 2) as Istkosten,
+	round(IstMin * Kostensatz, 2) - round(SollMin * Kostensatz, 2) as Mehrkosten
 from (
 	select * from v_KernzeitenSollIst
 ) n
