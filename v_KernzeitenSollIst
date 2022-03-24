@@ -3,8 +3,8 @@ alter view [dbo].[v_KernzeitenSollIst] as
 24.03.22 ra 78731 
 */
 select Datum, TeileNr, AuftrNr as Auftrag, 'Kern' as Bereich, KernNr as Pos, 'Fertigung' as Art, i.KernAnlBez as Ressource, Stueck as Menge, 
-	KernHerMin SollAufwandMin, 
-	IstKernZeit as IstAufwandMin, 
+	KernHerMin SollMin, 
+	IstKernZeit as IstMin, 
 	i.FertigKostVar + i.FertigKostFix as Kostensatz
 from  bewKernRueck k
 inner join [I-KernAnlagen] i on k.KernHiID = i.Nummer
